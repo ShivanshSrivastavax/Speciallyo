@@ -1,0 +1,17 @@
+{
+  "name": "propose-website",
+  "version": "1.0.0",
+  "description": "> Create personalized, playful, and romantic proposal pages that make them smile, laugh, and say **YES!**",
+  "main": "index.js",
+  "scripts": {
+    "build": "cd client && npm run build",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {
+    "@neon/config": "^1.3.2"
+  }
+}
