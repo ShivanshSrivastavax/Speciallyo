@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Heart, Sparkles, Music, Volume2, Mail, CheckCircle, RefreshCw, Send } from 'lucide-react';
-import api from '../services/api';
+import { Heart, Sparkles, Music, Mail, CheckCircle, Send } from 'lucide-react';
+import { neonApi } from '../services/neonApi';
 import ConfettiFx from '../components/ConfettiFx';
 import FloatingHearts from '../components/FloatingHearts';
 
@@ -61,16 +61,20 @@ const PublicProposal = () => {
     const fetchProposal = async () => {
       try {
         setLoading(true);
-        const res = await api.get(`/api/public/proposals/${slug}`);
-        setProposal(res.data.proposal);
+        const data = await neonApi.getPublicProposal(slug);
+        if (!data) {
+          setError('Proposal page not found or made private.');
+          return;
+        }
+        setProposal(data);
 
         // Record visitor view in background
-        api.post(`/api/public/proposals/${slug}/visit`, {
+        neonApi.recordVisit(slug, {
           device: /Mobi|Android/i.test(navigator.userAgent) ? 'Mobile' : 'Desktop',
           userAgent: navigator.userAgent,
         }).catch(() => {});
       } catch (err) {
-        setError(err.response?.data?.error || 'Proposal not found or unpublished.');
+        setError(err.message || 'Proposal not found or unpublished.');
       } finally {
         setLoading(false);
       }
@@ -85,7 +89,6 @@ const PublicProposal = () => {
     setNoAttempts(nextAttempts);
 
     if (proposal?.buttonAnimation === 'evader' || !proposal?.buttonAnimation) {
-      const maxOffset = 180;
       const angle = Math.random() * Math.PI * 2;
       const distance = Math.random() * 120 + 80;
       const randomX = Math.cos(angle) * distance;
@@ -108,9 +111,7 @@ const PublicProposal = () => {
     playCelebrationChime();
 
     try {
-      await api.post(`/api/public/proposals/${slug}/respond`, {
-        response: "YES! 💖",
-      });
+      await neonApi.submitResponse(slug, "YES! 💖");
     } catch (err) {
       console.error("Failed to record acceptance:", err);
     }
@@ -121,9 +122,7 @@ const PublicProposal = () => {
     if (!customResponseText.trim()) return;
 
     try {
-      await api.post(`/api/public/proposals/${slug}/respond`, {
-        response: `YES! 💖 Message: "${customResponseText.trim()}"`,
-      });
+      await neonApi.submitResponse(slug, `YES! 💖 Reply: "${customResponseText.trim()}"`);
       setMessageSent(true);
     } catch (err) {
       console.error("Failed to send reply:", err);
@@ -370,7 +369,7 @@ const PublicProposal = () => {
 
               <div className="mt-8 pt-4 border-t border-rose-100 flex items-center justify-center text-xs text-gray-400">
                 <Heart className="w-3.5 h-3.5 text-rose-400 fill-rose-400 mr-1" />
-                <span>Powered by LoveLink</span>
+                <span>Powered by Speciallyo</span>
               </div>
             </motion.div>
           )}

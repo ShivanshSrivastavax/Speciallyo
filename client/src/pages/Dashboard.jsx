@@ -4,7 +4,7 @@ import {
   Heart, PlusCircle, ExternalLink, Copy, Check, QrCode, 
   Trash2, Edit3, MessageCircleHeart, Eye, Sparkles, AlertCircle 
 } from 'lucide-react';
-import api from '../services/api';
+import { neonApi } from '../services/neonApi';
 import { useAuthStore } from '../store/authStore';
 import QRCodeModal from '../components/QRCodeModal';
 
@@ -19,12 +19,13 @@ const Dashboard = () => {
   const [selectedProposalForQR, setSelectedProposalForQR] = useState(null);
 
   const fetchProposals = async () => {
+    if (!user?.id) return;
     try {
       setLoading(true);
-      const res = await api.get('/api/proposals');
-      setProposals(res.data.proposals || []);
+      const data = await neonApi.getUserProposals(user.id);
+      setProposals(data || []);
     } catch (err) {
-      setError('Failed to load your proposals.');
+      setError('Failed to load your proposals from database.');
     } finally {
       setLoading(false);
     }
@@ -32,7 +33,7 @@ const Dashboard = () => {
 
   useEffect(() => {
     fetchProposals();
-  }, []);
+  }, [user?.id]);
 
   const handleCopyLink = (proposal) => {
     const fullUrl = `${window.location.origin}/p/${proposal.slug}`;
@@ -46,7 +47,7 @@ const Dashboard = () => {
       return;
     }
     try {
-      await api.delete(`/api/proposals/${id}`);
+      await neonApi.deleteProposal(id, user.id);
       setProposals((prev) => prev.filter((p) => p.id !== id));
     } catch (err) {
       alert('Failed to delete proposal.');
@@ -151,8 +152,7 @@ const Dashboard = () => {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {proposals.map((proposal) => {
-              const fullUrl = `${window.location.origin}/p/${proposal.slug}`;
-              const hasResponse = proposal._count?.responses > 0;
+              const hasResponse = (proposal._count?.responses || 0) > 0;
 
               return (
                 <div

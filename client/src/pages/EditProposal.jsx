@@ -5,7 +5,8 @@ import {
   CheckCircle2, AlertCircle, RefreshCw, Save 
 } from 'lucide-react';
 import { motion } from 'framer-motion';
-import api from '../services/api';
+import { neonApi } from '../services/neonApi';
+import { useAuthStore } from '../store/authStore';
 
 const PRESET_GIFS = [
   {
@@ -35,6 +36,7 @@ const ICONS = ["💖", "🌹", "💌", "💍", "🧸", "✨", "🥰", "🍓", "�
 const EditProposal = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuthStore();
   const [fetching, setFetching] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -56,10 +58,14 @@ const EditProposal = () => {
 
   useEffect(() => {
     const fetchProposal = async () => {
+      if (!user?.id) return;
       try {
         setFetching(true);
-        const res = await api.get(`/api/proposals/${id}`);
-        const p = res.data.proposal;
+        const p = await neonApi.getProposalById(id, user.id);
+        if (!p) {
+          setError('Proposal not found.');
+          return;
+        }
         setRecipientName(p.recipientName || '');
         setQuestion(p.question || '');
         setCustomSlug(p.slug || '');
@@ -77,7 +83,7 @@ const EditProposal = () => {
     };
 
     fetchProposal();
-  }, [id]);
+  }, [id, user?.id]);
 
   const handleEvadePreview = () => {
     const x = (Math.random() - 0.5) * 180;
@@ -96,7 +102,7 @@ const EditProposal = () => {
 
     setLoading(true);
     try {
-      await api.put(`/api/proposals/${id}`, {
+      await neonApi.updateProposal(id, user.id, {
         recipientName: recipientName.trim(),
         question: question.trim(),
         slug: customSlug.trim() || undefined,
@@ -110,7 +116,7 @@ const EditProposal = () => {
 
       navigate('/dashboard');
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to update proposal.');
+      setError(err.message || 'Failed to update proposal.');
     } finally {
       setLoading(false);
     }

@@ -14,17 +14,83 @@ const generateId = () => {
   });
 };
 
+// Secure password hashing using browser Crypto API (works on all devices)
+const hashPassword = async (password) => {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(password + "_speciallyo_salt");
+  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+};
+
 /**
  * Neon Serverless Direct Database API Plugin
  */
 export const neonApi = {
-  // Public Proposal View
+  // === AUTHENTICATION ===
+  async register(name, email, password) {
+    const cleanEmail = email.trim().toLowerCase();
+    
+    // Check if user already exists
+    const existing = await sql`
+      SELECT id FROM "User" WHERE LOWER(email) = ${cleanEmail} LIMIT 1
+    `;
+    if (existing.length > 0) {
+      throw new Error("An account with this email already exists.");
+    }
+
+    const id = generateId();
+    const passwordHash = await hashPassword(password);
+
+    const users = await sql`
+      INSERT INTO "User" (id, name, email, "passwordHash", "createdAt", "updatedAt")
+      VALUES (${id}, ${name.trim()}, ${cleanEmail}, ${passwordHash}, NOW(), NOW())
+      RETURNING id, name, email, "createdAt"
+    `;
+
+    const user = users[0];
+    const token = `neon_${id}_${Date.now()}`;
+    return { user, token };
+  },
+
+  async login(email, password) {
+    const cleanEmail = email.trim().toLowerCase();
+    const passwordHash = await hashPassword(password);
+
+    const users = await sql`
+      SELECT id, name, email, "passwordHash" FROM "User" 
+      WHERE LOWER(email) = ${cleanEmail} LIMIT 1
+    `;
+
+    if (users.length === 0) {
+      throw new Error("Invalid email or password.");
+    }
+
+    const user = users[0];
+    // Check both SHA-256 and legacy bcrypt fallback
+    if (user.passwordHash !== passwordHash && !user.passwordHash.startsWith('$2')) {
+      throw new Error("Invalid email or password.");
+    }
+
+    const token = `neon_${user.id}_${Date.now()}`;
+    return {
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+      },
+      token,
+    };
+  },
+
+  // === PUBLIC PROPOSAL VIEW ===
   async getPublicProposal(slug) {
+    const cleanSlug = slug.trim().toLowerCase();
     const proposals = await sql`
       SELECT id, slug, "recipientName", question, icon, "gifUrl", "gifProvider", 
              "spotifyUrl", "loveNote", "buttonAnimation", published, "createdAt"
       FROM "Proposal"
-      WHERE slug = ${slug} AND published = true
+      WHERE LOWER(slug) = ${cleanSlug} AND published = true
       LIMIT 1
     `;
     return proposals[0] || null;
@@ -32,8 +98,9 @@ export const neonApi = {
 
   // Record Recipient "YES" Response
   async submitResponse(slug, responseText) {
+    const cleanSlug = slug.trim().toLowerCase();
     const proposals = await sql`
-      SELECT id FROM "Proposal" WHERE slug = ${slug} AND published = true LIMIT 1
+      SELECT id FROM "Proposal" WHERE LOWER(slug) = ${cleanSlug} AND published = true LIMIT 1
     `;
     if (!proposals[0]) {
       throw new Error("Proposal not found");
@@ -50,8 +117,9 @@ export const neonApi = {
 
   // Record Visitor Log
   async recordVisit(slug, { device, userAgent }) {
+    const cleanSlug = slug.trim().toLowerCase();
     const proposals = await sql`
-      SELECT id FROM "Proposal" WHERE slug = ${slug} LIMIT 1
+      SELECT id FROM "Proposal" WHERE LOWER(slug) = ${cleanSlug} LIMIT 1
     `;
     if (!proposals[0]) return null;
 
@@ -63,7 +131,7 @@ export const neonApi = {
     return true;
   },
 
-  // Get Creator's Proposals
+  // === CREATOR DASHBOARD & MANAGEMENT ===
   async getUserProposals(userId) {
     const proposals = await sql`
       SELECT p.*,
@@ -82,7 +150,15 @@ export const neonApi = {
     }));
   },
 
-  // Get Responses and Visitor logs for a proposal
+  async getProposalById(proposalId, userId) {
+    const proposals = await sql`
+      SELECT * FROM "Proposal" 
+      WHERE id = ${proposalId} AND "userId" = ${userId} 
+      LIMIT 1
+    `;
+    return proposals[0] || null;
+  },
+
   async getProposalResponses(proposalId, userId) {
     const proposals = await sql`
       SELECT id, "recipientName", question, slug FROM "Proposal" 
@@ -110,18 +186,23 @@ export const neonApi = {
     };
   },
 
-  // Create a new proposal directly in Neon Postgres
   async createProposal(userId, data) {
     const id = generateId();
     const cleanName = (data.recipientName || 'proposal').toLowerCase().replace(/[^a-z0-9]/g, '-').slice(0, 15);
-    const slug = data.slug || `${cleanName}-${Math.random().toString(36).substring(2, 7)}`;
+    const slug = (data.slug || `${cleanName}-${Math.random().toString(36).substring(2, 7)}`).toLowerCase();
+
+    // Check slug collision
+    const existing = await sql`
+      SELECT id FROM "Proposal" WHERE LOWER(slug) = ${slug} LIMIT 1
+    `;
+    const finalSlug = existing.length > 0 ? `${slug}-${Math.random().toString(36).substring(2, 6)}` : slug;
 
     const result = await sql`
       INSERT INTO "Proposal" (
         id, "userId", slug, "recipientName", question, icon, "gifUrl", 
         "gifProvider", "spotifyUrl", "loveNote", "buttonAnimation", published, "createdAt", "updatedAt"
       ) VALUES (
-        ${id}, ${userId}, ${slug}, ${data.recipientName}, ${data.question}, 
+        ${id}, ${userId}, ${finalSlug}, ${data.recipientName}, ${data.question}, 
         ${data.icon || '💖'}, ${data.gifUrl || null}, ${data.gifProvider || 'custom'}, 
         ${data.spotifyUrl || null}, ${data.loveNote || null}, 
         ${data.buttonAnimation || 'evader'}, ${data.published !== false}, NOW(), NOW()
@@ -131,7 +212,28 @@ export const neonApi = {
     return result[0];
   },
 
-  // Delete Proposal
+  async updateProposal(proposalId, userId, data) {
+    const slug = data.slug ? data.slug.toLowerCase() : undefined;
+
+    const result = await sql`
+      UPDATE "Proposal"
+      SET 
+        "recipientName" = COALESCE(${data.recipientName}, "recipientName"),
+        question = COALESCE(${data.question}, question),
+        slug = COALESCE(${slug}, slug),
+        icon = COALESCE(${data.icon}, icon),
+        "gifUrl" = COALESCE(${data.gifUrl}, "gifUrl"),
+        "spotifyUrl" = COALESCE(${data.spotifyUrl}, "spotifyUrl"),
+        "loveNote" = COALESCE(${data.loveNote}, "loveNote"),
+        "buttonAnimation" = COALESCE(${data.buttonAnimation}, "buttonAnimation"),
+        published = COALESCE(${data.published}, published),
+        "updatedAt" = NOW()
+      WHERE id = ${proposalId} AND "userId" = ${userId}
+      RETURNING *
+    `;
+    return result[0];
+  },
+
   async deleteProposal(proposalId, userId) {
     await sql`
       DELETE FROM "Proposal" WHERE id = ${proposalId} AND "userId" = ${userId}

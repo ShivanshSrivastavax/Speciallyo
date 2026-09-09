@@ -4,11 +4,13 @@ import {
   ArrowLeft, MessageCircleHeart, Eye, Clock, 
   Smartphone, Monitor, Globe, Sparkles, AlertCircle, Share2, ExternalLink 
 } from 'lucide-react';
-import api from '../services/api';
+import { neonApi } from '../services/neonApi';
+import { useAuthStore } from '../store/authStore';
 import QRCodeModal from '../components/QRCodeModal';
 
 const ProposalResponses = () => {
   const { id } = useParams();
+  const { user } = useAuthStore();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -16,10 +18,11 @@ const ProposalResponses = () => {
 
   useEffect(() => {
     const fetchResponses = async () => {
+      if (!user?.id) return;
       try {
         setLoading(true);
-        const res = await api.get(`/api/proposals/${id}/responses`);
-        setData(res.data);
+        const res = await neonApi.getProposalResponses(id, user.id);
+        setData(res);
       } catch (err) {
         setError('Failed to load response logs for this proposal.');
       } finally {
@@ -28,7 +31,7 @@ const ProposalResponses = () => {
     };
 
     fetchResponses();
-  }, [id]);
+  }, [id, user?.id]);
 
   if (loading) {
     return (
@@ -107,7 +110,7 @@ const ProposalResponses = () => {
           </div>
           <div>
             <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Responses Received</p>
-            <p className="text-2xl font-black text-gray-900 font-heading">{responses.length}</p>
+            <p className="text-2xl font-black text-gray-900 font-heading">{(responses || []).length}</p>
           </div>
         </div>
 
@@ -117,7 +120,7 @@ const ProposalResponses = () => {
           </div>
           <div>
             <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Total Views</p>
-            <p className="text-2xl font-black text-gray-900 font-heading">{visitors.length}</p>
+            <p className="text-2xl font-black text-gray-900 font-heading">{(visitors || []).length}</p>
           </div>
         </div>
       </div>
@@ -127,11 +130,11 @@ const ProposalResponses = () => {
         <h2 className="text-xl font-bold text-gray-800 font-heading mb-4 flex items-center space-x-2">
           <span>Answers & Love Notes</span>
           <span className="text-xs px-2 py-0.5 rounded-full bg-rose-100 text-rose-600 font-bold">
-            {responses.length}
+            {(responses || []).length}
           </span>
         </h2>
 
-        {responses.length === 0 ? (
+        {(!responses || responses.length === 0) ? (
           <div className="glass-card rounded-2xl p-8 text-center border border-white">
             <div className="text-3xl mb-2">⏳</div>
             <h3 className="font-bold text-gray-700">Waiting for {proposalInfo.recipientName}'s answer!</h3>
@@ -182,10 +185,10 @@ const ProposalResponses = () => {
       {/* Visitor Log Table */}
       <div>
         <h2 className="text-xl font-bold text-gray-800 font-heading mb-4">
-          Visitor Activity ({visitors.length})
+          Visitor Activity ({(visitors || []).length})
         </h2>
 
-        {visitors.length === 0 ? (
+        {(!visitors || visitors.length === 0) ? (
           <div className="glass-card rounded-2xl p-6 text-center border border-white">
             <p className="text-xs text-gray-400">No visitors recorded yet.</p>
           </div>

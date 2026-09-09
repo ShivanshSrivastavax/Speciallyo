@@ -5,7 +5,8 @@ import {
   FileText, Link2, ArrowRight, Eye, CheckCircle2, AlertCircle, RefreshCw 
 } from 'lucide-react';
 import { motion } from 'framer-motion';
-import api from '../services/api';
+import { neonApi } from '../services/neonApi';
+import { useAuthStore } from '../store/authStore';
 
 const PRESET_QUESTIONS = [
   "Will you be my Valentine? 💖",
@@ -43,6 +44,7 @@ const ICONS = ["💖", "🌹", "💌", "💍", "🧸", "✨", "🥰", "🍓", "�
 
 const CreateProposal = () => {
   const navigate = useNavigate();
+  const { user } = useAuthStore();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -55,7 +57,6 @@ const CreateProposal = () => {
   const [spotifyUrl, setSpotifyUrl] = useState('');
   const [loveNote, setLoveNote] = useState('');
   const [buttonAnimation, setButtonAnimation] = useState('evader');
-  const [photos, setPhotos] = useState(['']);
 
   // Preview interactive state
   const [previewAnswered, setPreviewAnswered] = useState(false);
@@ -67,20 +68,6 @@ const CreateProposal = () => {
     const y = (Math.random() - 0.5) * 120;
     setPreviewNoPos({ x, y });
     setPreviewNoCount((c) => c + 1);
-  };
-
-  const handleAddPhotoField = () => {
-    setPhotos([...photos, '']);
-  };
-
-  const handlePhotoChange = (index, value) => {
-    const updated = [...photos];
-    updated[index] = value;
-    setPhotos(updated);
-  };
-
-  const handleRemovePhoto = (index) => {
-    setPhotos(photos.filter((_, i) => i !== index));
   };
 
   const handleSubmit = async (e) => {
@@ -95,8 +82,10 @@ const CreateProposal = () => {
       setError('Please enter a proposal question.');
       return;
     }
-
-    const filteredPhotos = photos.map((p) => p.trim()).filter((p) => p.length > 0);
+    if (!user?.id) {
+      setError('Please sign in to create a proposal.');
+      return;
+    }
 
     setLoading(true);
     try {
@@ -109,14 +98,13 @@ const CreateProposal = () => {
         spotifyUrl: spotifyUrl.trim() || undefined,
         loveNote: loveNote.trim() || undefined,
         buttonAnimation,
-        photos: filteredPhotos,
         published: true,
       };
 
-      const res = await api.post('/api/proposals', payload);
-      navigate(`/dashboard`);
+      await neonApi.createProposal(user.id, payload);
+      navigate('/dashboard');
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to create proposal. Please check your inputs.');
+      setError(err.message || 'Failed to create proposal. Please check your inputs.');
     } finally {
       setLoading(false);
     }
@@ -311,7 +299,7 @@ const CreateProposal = () => {
               </div>
             </div>
 
-            {/* Step 4: Romantic Extras (Love Letter, Spotify, Photos) */}
+            {/* Step 4: Romantic Extras */}
             <div className="glass-card rounded-3xl p-6 sm:p-7 border border-white space-y-4">
               <div className="flex items-center space-x-2.5 mb-2 text-rose-600 font-bold">
                 <Music className="w-5 h-5" />
@@ -321,7 +309,6 @@ const CreateProposal = () => {
               <div>
                 <label className="block text-xs font-semibold text-gray-700 mb-1.5 uppercase tracking-wider flex items-center justify-between">
                   <span>Secret Love Letter (Revealed on YES)</span>
-                  <span className="text-[10px] text-gray-400 font-normal">Markdown supported</span>
                 </label>
                 <textarea
                   rows={4}
@@ -352,7 +339,7 @@ const CreateProposal = () => {
                 </label>
                 <div className="flex items-center">
                   <span className="text-xs text-gray-400 bg-rose-50 px-3 py-2.5 rounded-l-xl border border-r-0 border-rose-200 font-mono">
-                    lovelink.app/p/
+                    speciallyo.web.app/p/
                   </span>
                   <input
                     type="text"
@@ -406,7 +393,6 @@ const CreateProposal = () => {
               </button>
             </div>
 
-            {/* Preview Card Inner */}
             <div className="p-4 bg-gradient-to-b from-white to-rose-50/50 rounded-2xl border border-rose-100/80 text-center min-h-[380px] flex flex-col justify-center">
               {!previewAnswered ? (
                 <div>

@@ -1,24 +1,23 @@
 import { create } from "zustand";
-import api from "../services/api";
+import { neonApi } from "../services/neonApi";
 
-export const useAuthStore = create((set) => ({
-  user: JSON.parse(localStorage.getItem("lovelink_user") || "null"),
-  token: localStorage.getItem("lovelink_token") || null,
-  isAuthenticated: !!localStorage.getItem("lovelink_token"),
+export const useAuthStore = create((set, get) => ({
+  user: JSON.parse(localStorage.getItem("speciallyo_user") || localStorage.getItem("lovelink_user") || "null"),
+  token: localStorage.getItem("speciallyo_token") || localStorage.getItem("lovelink_token") || null,
+  isAuthenticated: !!(localStorage.getItem("speciallyo_token") || localStorage.getItem("lovelink_token")),
   isLoading: false,
   error: null,
 
   login: async (email, password) => {
     set({ isLoading: true, error: null });
     try {
-      const response = await api.post("/api/auth/login", { email, password });
-      const { token, user } = response.data;
-      localStorage.setItem("lovelink_token", token);
-      localStorage.setItem("lovelink_user", JSON.stringify(user));
+      const { user, token } = await neonApi.login(email, password);
+      localStorage.setItem("speciallyo_token", token);
+      localStorage.setItem("speciallyo_user", JSON.stringify(user));
       set({ user, token, isAuthenticated: true, isLoading: false, error: null });
       return { success: true };
     } catch (err) {
-      const message = err.response?.data?.error || "Login failed. Please check your credentials.";
+      const message = err.message || "Login failed. Please check your credentials.";
       set({ error: message, isLoading: false });
       return { success: false, error: message };
     }
@@ -27,39 +26,37 @@ export const useAuthStore = create((set) => ({
   register: async (name, email, password) => {
     set({ isLoading: true, error: null });
     try {
-      const response = await api.post("/api/auth/register", { name, email, password });
-      const { token, user } = response.data;
-      localStorage.setItem("lovelink_token", token);
-      localStorage.setItem("lovelink_user", JSON.stringify(user));
+      const { user, token } = await neonApi.register(name, email, password);
+      localStorage.setItem("speciallyo_token", token);
+      localStorage.setItem("speciallyo_user", JSON.stringify(user));
       set({ user, token, isAuthenticated: true, isLoading: false, error: null });
       return { success: true };
     } catch (err) {
-      const message = err.response?.data?.error || "Registration failed. Please try again.";
+      const message = err.message || "Registration failed. Please try again.";
       set({ error: message, isLoading: false });
       return { success: false, error: message };
     }
   },
 
   logout: () => {
+    localStorage.removeItem("speciallyo_token");
+    localStorage.removeItem("speciallyo_user");
     localStorage.removeItem("lovelink_token");
     localStorage.removeItem("lovelink_user");
     set({ user: null, token: null, isAuthenticated: false, error: null });
   },
 
-  checkAuth: async () => {
-    const token = localStorage.getItem("lovelink_token");
-    if (!token) {
+  checkAuth: () => {
+    const token = localStorage.getItem("speciallyo_token") || localStorage.getItem("lovelink_token");
+    const storedUser = localStorage.getItem("speciallyo_user") || localStorage.getItem("lovelink_user");
+    if (!token || !storedUser) {
       set({ user: null, token: null, isAuthenticated: false });
       return;
     }
     try {
-      const response = await api.get("/api/auth/me");
-      const { user } = response.data;
-      localStorage.setItem("lovelink_user", JSON.stringify(user));
-      set({ user, isAuthenticated: true });
-    } catch (err) {
-      localStorage.removeItem("lovelink_token");
-      localStorage.removeItem("lovelink_user");
+      const user = JSON.parse(storedUser);
+      set({ user, token, isAuthenticated: true });
+    } catch {
       set({ user: null, token: null, isAuthenticated: false });
     }
   },
