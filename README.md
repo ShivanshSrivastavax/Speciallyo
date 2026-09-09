@@ -1,6 +1,10 @@
-# 💖 LoveLink — Interactive Proposal Web Application
+# 💖 Speciallyo (LoveLink) — Interactive Proposal Web Application
 
 > Create personalized, playful, and romantic proposal pages that make them smile, laugh, and say **YES!**
+
+🌐 **Live Website**: [https://speciallyo.web.app](https://speciallyo.web.app)
+🐙 **GitHub Repository**: [https://github.com/ShivanshSrivastavax/Speciallyo](https://github.com/ShivanshSrivastavax/Speciallyo)
+🐘 **Database**: Neon Serverless PostgreSQL (`royal-poetry-03626180`)
 
 ---
 
