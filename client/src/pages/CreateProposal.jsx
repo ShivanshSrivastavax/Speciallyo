@@ -1,42 +1,42 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
-  Heart, Sparkles, Wand2, Music, Image as ImageIcon, 
-  FileText, Link2, ArrowRight, Eye, CheckCircle2, AlertCircle, RefreshCw 
+  Heart, Sparkles, Wand2, Music, Calendar, Clock, MapPin, 
+  ArrowRight, Eye, CheckCircle2, AlertCircle, RefreshCw, Layers, Edit3, MessageCircle 
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { neonApi } from '../services/neonApi';
 import { useAuthStore } from '../store/authStore';
 
 const PRESET_QUESTIONS = [
-  "Will you be my Valentine? 💖",
-  "Will you go on a date with me? 🌹",
-  "Will you be my girlfriend? 💌",
-  "Will you be my boyfriend? ✨",
-  "Will you marry me? 💍",
-  "Can I take you out for coffee? ☕",
+  { id: 'val', text: "Will you be my Valentine? 💖", icon: "💖" },
+  { id: 'date', text: "Will you go on a date with me? 🌹", icon: "🌹" },
+  { id: 'gf', text: "Will you be my girlfriend? 💌", icon: "💌" },
+  { id: 'bf', text: "Will you be my boyfriend? ✨", icon: "✨" },
+  { id: 'marry', text: "Will you marry me? 💍", icon: "💍" },
+  { id: 'coffee', text: "Can I take you out for coffee? ☕", icon: "☕" },
 ];
 
 const PRESET_GIFS = [
   {
     name: "Cute Bear Love",
-    url: "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExM3ZhcXlzc2N1ejZ3ajN6bjA0OGY0MnpsamFpYWZmdXJ6c3F6enFqdiZlcD12MV9naWZzX3NlYXJjaCZjdD1n/c76IJLufpNwSULPk77/giphy.gif"
+    url: "https://media1.giphy.com/media/v1.Y2lkPTc5MGI3NjExM3ZhcXlzc2N1ejZ3ajN6bjA0OGY0MnpsamFpYWZmdXJ6c3F6enFqdiZlcD12MV9naWZzX3NlYXJjaCZjdD1n/c76IJLufpNwSULPk77/giphy.gif"
   },
   {
     name: "Hugging Cats",
-    url: "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExbTQ1bDJtM2xnbXdtNGl3bzZ4Znp6aDNpdnhodms1d2V0Y3JscTNqOCZlcD12MV9naWZzX3NlYXJjaCZjdD1n/MDJ9IbxxvDUQM/giphy.gif"
+    url: "https://media.giphy.com/media/MDJ9IbxxvDUQM/giphy.gif"
   },
   {
-    name: "Love Confession",
-    url: "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExMnI4cnkzaDdvMmc2MG05c21yZml0d25nZm54M2lsaXRhbzBsdGgyNyZlcD12MV9naWZzX3NlYXJjaCZjdD1n/26FLdmIp6wJr91JAI/giphy.gif"
+    name: "Peach & Goma Kiss",
+    url: "https://media.giphy.com/media/LHZyixOnHwDDy/giphy.gif"
   },
   {
     name: "Puppy Eyes",
-    url: "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExNnBzajI5ZnJrbjJqM2p0cTN3Y282N2pjc2NraTVscHZ0MWh2YjQ2aCZlcD12MV9naWZzX3NlYXJjaCZjdD1n/uw0KqTWZPAhuU/giphy.gif"
+    url: "https://media.giphy.com/media/uw0KqTWZPAhuU/giphy.gif"
   },
   {
-    name: "Peach & Goma",
-    url: "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExbnhmdWh1amg2aW8yY21oc2o2Mm9vaHl3dW8zNG1mbnpscG02c2M3eiZlcD12MV9naWZzX3NlYXJjaCZjdD1n/LHZyixOnHwDDy/giphy.gif"
+    name: "Anime Love Confession",
+    url: "https://media.giphy.com/media/26FLdmIp6wJr91JAI/giphy.gif"
   }
 ];
 
@@ -50,36 +50,66 @@ const CreateProposal = () => {
 
   // Form State
   const [recipientName, setRecipientName] = useState('');
-  const [question, setQuestion] = useState('Will you be my Valentine? 💖');
+  const [question, setQuestion] = useState(PRESET_QUESTIONS[0].text);
+  const [isCustomQuestion, setIsCustomQuestion] = useState(false);
+  const [customQuestionText, setCustomQuestionText] = useState('');
   const [customSlug, setCustomSlug] = useState('');
   const [icon, setIcon] = useState('💖');
   const [gifUrl, setGifUrl] = useState(PRESET_GIFS[0].url);
   const [spotifyUrl, setSpotifyUrl] = useState('');
-  const [loveNote, setLoveNote] = useState('');
   const [buttonAnimation, setButtonAnimation] = useState('evader');
 
+  // Follow-up After "YES" Configuration
+  const [followUpType, setFollowUpType] = useState('date_plan'); // 'date_plan' | 'two_options' | 'letter_only'
+  const [loveNote, setLoveNote] = useState('');
+  const [option1, setOption1] = useState('Coffee & Boba ☕🧋');
+  const [option2, setOption2] = useState('Dinner & Movie 🍕🎬');
+  const [twoOptionsPrompt, setTwoOptionsPrompt] = useState('What should we do on our first date?');
+
   // Preview interactive state
-  const [previewAnswered, setPreviewAnswered] = useState(false);
+  const [previewStep, setPreviewStep] = useState('proposal'); // 'proposal' | 'follow_up' | 'celebration'
   const [previewNoPos, setPreviewNoPos] = useState({ x: 0, y: 0 });
   const [previewNoCount, setPreviewNoCount] = useState(0);
 
+  // Preview date form state
+  const [previewDate, setPreviewDate] = useState('');
+  const [previewTime, setPreviewTime] = useState('Dinner (7:00 PM) 🍷');
+  const [previewActivity, setPreviewActivity] = useState('Romantic Dinner 🍝');
+
+  const currentQuestionText = isCustomQuestion ? customQuestionText : question;
+
   const handleEvadePreview = () => {
-    const x = (Math.random() - 0.5) * 180;
-    const y = (Math.random() - 0.5) * 120;
+    // Evade within preview container
+    const x = (Math.random() - 0.5) * 220;
+    const y = (Math.random() - 0.5) * 140;
     setPreviewNoPos({ x, y });
     setPreviewNoCount((c) => c + 1);
+  };
+
+  const handleSelectQuestion = (qText) => {
+    setIsCustomQuestion(false);
+    setQuestion(qText);
+  };
+
+  const handleCustomQuestionClick = () => {
+    setIsCustomQuestion(true);
+    if (!customQuestionText) {
+      setCustomQuestionText(question);
+    }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
 
+    const finalQuestion = isCustomQuestion ? customQuestionText.trim() : question.trim();
+
     if (!recipientName.trim()) {
       setError('Please enter the recipient name.');
       return;
     }
-    if (!question.trim()) {
-      setError('Please enter a proposal question.');
+    if (!finalQuestion) {
+      setError('Please select or enter a proposal question.');
       return;
     }
     if (!user?.id) {
@@ -87,16 +117,25 @@ const CreateProposal = () => {
       return;
     }
 
+    // Build follow-up payload
+    const followUpData = {
+      type: followUpType,
+      note: loveNote.trim(),
+      option1: option1.trim(),
+      option2: option2.trim(),
+      twoOptionsPrompt: twoOptionsPrompt.trim(),
+    };
+
     setLoading(true);
     try {
       const payload = {
         recipientName: recipientName.trim(),
-        question: question.trim(),
+        question: finalQuestion,
         slug: customSlug.trim() || undefined,
         icon,
         gifUrl,
         spotifyUrl: spotifyUrl.trim() || undefined,
-        loveNote: loveNote.trim() || undefined,
+        loveNote: JSON.stringify(followUpData),
         buttonAnimation,
         published: true,
       };
@@ -117,7 +156,7 @@ const CreateProposal = () => {
           Create an Interactive Proposal ✨
         </h1>
         <p className="text-gray-500 text-sm mt-1">
-          Customize the message, physics, reaction GIFs, and secret note with real-time live preview!
+          Customize questions, full-page button evasion physics, post-YES date planning, and live preview!
         </p>
       </div>
 
@@ -132,11 +171,11 @@ const CreateProposal = () => {
         {/* Builder Form (Left 7 Cols) */}
         <div className="lg:col-span-7">
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Step 1: Who is this for? */}
+            {/* Step 1: Who is this for & Question Selector */}
             <div className="glass-card rounded-3xl p-6 sm:p-7 border border-white">
               <div className="flex items-center space-x-2.5 mb-4 text-rose-600 font-bold">
                 <Heart className="w-5 h-5 fill-rose-500" />
-                <h3 className="text-lg font-heading text-gray-900">1. Recipient & Question</h3>
+                <h3 className="text-lg font-heading text-gray-900">1. Recipient & Proposal Question</h3>
               </div>
 
               <div className="space-y-4">
@@ -155,34 +194,66 @@ const CreateProposal = () => {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1.5 uppercase tracking-wider">
-                    Proposal Question *
+                  <label className="block text-xs font-semibold text-gray-700 mb-2 uppercase tracking-wider">
+                    Choose Proposal Question *
                   </label>
-                  <input
-                    type="text"
-                    value={question}
-                    onChange={(e) => setQuestion(e.target.value)}
-                    placeholder="Will you be my Valentine?"
-                    required
-                    className="w-full px-4 py-3 rounded-xl bg-white/90 border border-rose-200 focus:border-rose-500 focus:ring-2 focus:ring-rose-200 outline-none text-sm font-medium"
-                  />
+                  
+                  {/* Preset Question Buttons Grid */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 mb-3">
+                    {PRESET_QUESTIONS.map((q) => {
+                      const isSelected = !isCustomQuestion && question === q.text;
+                      return (
+                        <button
+                          type="button"
+                          key={q.id}
+                          onClick={() => handleSelectQuestion(q.text)}
+                          className={`p-3 rounded-2xl border text-left transition-all flex items-center justify-between text-xs sm:text-sm font-medium ${
+                            isSelected
+                              ? 'bg-gradient-to-r from-rose-500 to-pink-500 text-white border-transparent shadow-md shadow-rose-500/25 scale-[1.02]'
+                              : 'bg-white/90 text-gray-700 border-rose-100 hover:border-rose-300 hover:bg-rose-50/50'
+                          }`}
+                        >
+                          <span className="flex-1 pr-2">{q.text}</span>
+                          {isSelected && <CheckCircle2 className="w-4 h-4 text-white shrink-0" />}
+                        </button>
+                      );
+                    })}
+                  </div>
 
-                  {/* Preset quick chips */}
-                  <div className="mt-2.5 flex flex-wrap gap-1.5">
-                    {PRESET_QUESTIONS.map((q) => (
-                      <button
-                        type="button"
-                        key={q}
-                        onClick={() => setQuestion(q)}
-                        className={`text-xs px-2.5 py-1 rounded-lg border transition-all ${
-                          question === q
-                            ? 'bg-rose-500 text-white border-rose-500 font-medium'
-                            : 'bg-rose-50/60 text-gray-600 border-rose-100 hover:bg-rose-100'
-                        }`}
+                  {/* Custom Question Button / Field */}
+                  <div>
+                    <button
+                      type="button"
+                      onClick={handleCustomQuestionClick}
+                      className={`w-full p-3 rounded-2xl border text-xs sm:text-sm font-medium transition-all flex items-center justify-between ${
+                        isCustomQuestion
+                          ? 'bg-rose-50 border-rose-500 text-rose-700 shadow-xs'
+                          : 'bg-white/80 border-rose-100 text-gray-600 hover:bg-rose-50/40'
+                      }`}
+                    >
+                      <div className="flex items-center space-x-2">
+                        <Edit3 className="w-4 h-4 text-rose-500" />
+                        <span>✨ Or Write Your Own Custom Question</span>
+                      </div>
+                      {isCustomQuestion && <span className="text-[11px] font-bold text-rose-600 uppercase">Active</span>}
+                    </button>
+
+                    {isCustomQuestion && (
+                      <motion.div
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="mt-2.5"
                       >
-                        {q}
-                      </button>
-                    ))}
+                        <input
+                          type="text"
+                          value={customQuestionText}
+                          onChange={(e) => setCustomQuestionText(e.target.value)}
+                          placeholder="e.g. Can we go on a trip together to Paris? ✈️"
+                          required
+                          className="w-full px-4 py-3 rounded-xl bg-white border-2 border-rose-400 focus:border-rose-600 focus:ring-2 focus:ring-rose-200 outline-none text-sm font-medium text-gray-900"
+                        />
+                      </motion.div>
+                    )}
                   </div>
                 </div>
 
@@ -252,20 +323,20 @@ const CreateProposal = () => {
             <div className="glass-card rounded-3xl p-6 sm:p-7 border border-white">
               <div className="flex items-center space-x-2.5 mb-4 text-rose-600 font-bold">
                 <Wand2 className="w-5 h-5" />
-                <h3 className="text-lg font-heading text-gray-900">3. Interactive "No" Button Behavior</h3>
+                <h3 className="text-lg font-heading text-gray-900">3. "No" Button Evasion Mode</h3>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {[
                   {
                     id: 'evader',
-                    title: 'The Evader (Recommended)',
-                    desc: 'No button actively flees the cursor & touch in panic!',
+                    title: 'Full-Screen Runaway (Recommended)',
+                    desc: 'No button flees everywhere across the whole page!',
                   },
                   {
                     id: 'shrink',
                     title: 'Shrinking No',
-                    desc: 'No button shrinks smaller on each click attempt.',
+                    desc: 'No button shrinks smaller on each hover attempt.',
                   },
                   {
                     id: 'grow',
@@ -274,8 +345,8 @@ const CreateProposal = () => {
                   },
                   {
                     id: 'teleport',
-                    title: 'Teleportation',
-                    desc: 'No button jumps to random corners when approached.',
+                    title: 'Screen Teleportation',
+                    desc: 'No button jumps to random corners of the screen.',
                   },
                 ].map((mode) => (
                   <div
@@ -299,55 +370,179 @@ const CreateProposal = () => {
               </div>
             </div>
 
-            {/* Step 4: Romantic Extras */}
-            <div className="glass-card rounded-3xl p-6 sm:p-7 border border-white space-y-4">
-              <div className="flex items-center space-x-2.5 mb-2 text-rose-600 font-bold">
-                <Music className="w-5 h-5" />
-                <h3 className="text-lg font-heading text-gray-900">4. Romantic Extras (Optional)</h3>
+            {/* Step 4: After "YES" Follow-Up & Planning Card */}
+            <div className="glass-card rounded-3xl p-6 sm:p-7 border border-white space-y-5">
+              <div className="flex items-center space-x-2.5 text-rose-600 font-bold">
+                <Calendar className="w-5 h-5" />
+                <h3 className="text-lg font-heading text-gray-900">4. After "YES" Next Step & Planning</h3>
               </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1.5 uppercase tracking-wider flex items-center justify-between">
-                  <span>Secret Love Letter (Revealed on YES)</span>
-                </label>
-                <textarea
-                  rows={4}
-                  value={loveNote}
-                  onChange={(e) => setLoveNote(e.target.value)}
-                  placeholder="You make every single day magical. Thank you for always being my sunshine... ❤️"
-                  className="w-full px-4 py-3 rounded-xl bg-white/90 border border-rose-200 focus:border-rose-500 focus:ring-2 focus:ring-rose-200 outline-none text-sm font-handwriting text-lg"
-                />
+              <p className="text-xs text-gray-500 -mt-2">
+                Choose what happens immediately after your partner clicks "YES! 💖":
+              </p>
+
+              {/* Follow-up Type Selector */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {[
+                  {
+                    id: 'date_plan',
+                    icon: '📅',
+                    title: 'Plan Our Date',
+                    desc: 'Ask Date, Time slot, Food & Location preference',
+                  },
+                  {
+                    id: 'two_options',
+                    icon: '🎁',
+                    title: 'Two Choices',
+                    desc: 'Give 2 options to pick from (e.g. Coffee vs Dinner)',
+                  },
+                  {
+                    id: 'letter_only',
+                    icon: '💌',
+                    title: 'Love Letter Only',
+                    desc: 'Reveal secret handwritten love letter',
+                  },
+                ].map((type) => (
+                  <div
+                    key={type.id}
+                    onClick={() => setFollowUpType(type.id)}
+                    className={`p-4 rounded-2xl border cursor-pointer transition-all text-center ${
+                      followUpType === type.id
+                        ? 'bg-rose-50 border-rose-500 shadow-xs ring-2 ring-rose-200'
+                        : 'bg-white/80 border-rose-100 hover:bg-rose-50/40'
+                    }`}
+                  >
+                    <span className="text-2xl block mb-1">{type.icon}</span>
+                    <h4 className="text-xs sm:text-sm font-bold text-gray-900">{type.title}</h4>
+                    <p className="text-[11px] text-gray-500 mt-1 leading-snug">{type.desc}</p>
+                  </div>
+                ))}
               </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1.5 uppercase tracking-wider">
-                  Spotify Track / Playlist Link
-                </label>
-                <input
-                  type="url"
-                  value={spotifyUrl}
-                  onChange={(e) => setSpotifyUrl(e.target.value)}
-                  placeholder="https://open.spotify.com/track/..."
-                  className="w-full px-4 py-2.5 rounded-xl bg-white/90 border border-rose-200 focus:border-rose-500 focus:ring-2 focus:ring-rose-200 outline-none text-xs"
-                />
-              </div>
+              {/* Dynamic Follow-Up Inputs */}
+              {followUpType === 'date_plan' && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  className="space-y-3 pt-3 border-t border-rose-100"
+                >
+                  <div className="p-3.5 rounded-2xl bg-rose-50/80 border border-rose-200/80 text-xs text-rose-800">
+                    ✨ <strong>Interactive Date Planner:</strong> After clicking YES, the recipient will be asked to pick a <strong>Date 📅</strong>, <strong>Time slot ⏰</strong>, <strong>Food/Activity preference 🍝</strong>, and <strong>Location/Special note 📍</strong>!
+                  </div>
 
-              {/* Custom Slug URL */}
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1.5 uppercase tracking-wider">
-                  Custom URL Slug
-                </label>
-                <div className="flex items-center">
-                  <span className="text-xs text-gray-400 bg-rose-50 px-3 py-2.5 rounded-l-xl border border-r-0 border-rose-200 font-mono">
-                    speciallyo.web.app/p/
-                  </span>
-                  <input
-                    type="text"
-                    value={customSlug}
-                    onChange={(e) => setCustomSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
-                    placeholder={recipientName ? recipientName.toLowerCase().replace(/\s+/g, '-') : 'sarah-love'}
-                    className="w-full px-3 py-2.5 rounded-r-xl bg-white/90 border border-rose-200 focus:border-rose-500 focus:ring-2 focus:ring-rose-200 outline-none text-xs font-mono"
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 mb-1.5 uppercase tracking-wider">
+                      Optional Sweet Note / Message with the date planner
+                    </label>
+                    <textarea
+                      rows={3}
+                      value={loveNote}
+                      onChange={(e) => setLoveNote(e.target.value)}
+                      placeholder="I can't wait to spend this special day with you! Pick when you're free ❤️"
+                      className="w-full px-4 py-3 rounded-xl bg-white/90 border border-rose-200 focus:border-rose-500 focus:ring-2 focus:ring-rose-200 outline-none text-sm font-handwriting text-lg"
+                    />
+                  </div>
+                </motion.div>
+              )}
+
+              {followUpType === 'two_options' && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  className="space-y-3 pt-3 border-t border-rose-100"
+                >
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 mb-1.5 uppercase tracking-wider">
+                      Question / Choice Prompt
+                    </label>
+                    <input
+                      type="text"
+                      value={twoOptionsPrompt}
+                      onChange={(e) => setTwoOptionsPrompt(e.target.value)}
+                      placeholder="What should we do on our date?"
+                      className="w-full px-4 py-2.5 rounded-xl bg-white/90 border border-rose-200 focus:border-rose-500 focus:ring-2 focus:ring-rose-200 outline-none text-xs font-medium"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-700 mb-1.5 uppercase tracking-wider">
+                        Option 1 🎁
+                      </label>
+                      <input
+                        type="text"
+                        value={option1}
+                        onChange={(e) => setOption1(e.target.value)}
+                        placeholder="Coffee & Bookstore ☕📚"
+                        className="w-full px-4 py-2.5 rounded-xl bg-white/90 border border-rose-200 focus:border-rose-500 focus:ring-2 focus:ring-rose-200 outline-none text-xs font-medium"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-700 mb-1.5 uppercase tracking-wider">
+                        Option 2 🌹
+                      </label>
+                      <input
+                        type="text"
+                        value={option2}
+                        onChange={(e) => setOption2(e.target.value)}
+                        placeholder="Romantic Dinner & Stargazing 🍷✨"
+                        className="w-full px-4 py-2.5 rounded-xl bg-white/90 border border-rose-200 focus:border-rose-500 focus:ring-2 focus:ring-rose-200 outline-none text-xs font-medium"
+                      />
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+
+              {followUpType === 'letter_only' && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  className="space-y-3 pt-3 border-t border-rose-100"
+                >
+                  <label className="block text-xs font-semibold text-gray-700 mb-1.5 uppercase tracking-wider">
+                    Secret Love Letter (Revealed on YES)
+                  </label>
+                  <textarea
+                    rows={4}
+                    value={loveNote}
+                    onChange={(e) => setLoveNote(e.target.value)}
+                    placeholder="You make every single day magical. Thank you for always being my sunshine... ❤️"
+                    className="w-full px-4 py-3 rounded-xl bg-white/90 border border-rose-200 focus:border-rose-500 focus:ring-2 focus:ring-rose-200 outline-none text-sm font-handwriting text-lg"
                   />
+                </motion.div>
+              )}
+
+              {/* Extras: Spotify and Custom Slug */}
+              <div className="pt-3 border-t border-rose-100 space-y-3">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1.5 uppercase tracking-wider">
+                    Spotify Track / Playlist Link (Optional)
+                  </label>
+                  <input
+                    type="url"
+                    value={spotifyUrl}
+                    onChange={(e) => setSpotifyUrl(e.target.value)}
+                    placeholder="https://open.spotify.com/track/..."
+                    className="w-full px-4 py-2.5 rounded-xl bg-white/90 border border-rose-200 focus:border-rose-500 focus:ring-2 focus:ring-rose-200 outline-none text-xs"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1.5 uppercase tracking-wider">
+                    Custom URL Slug (Optional)
+                  </label>
+                  <div className="flex items-center">
+                    <span className="text-xs text-gray-400 bg-rose-50 px-3 py-2.5 rounded-l-xl border border-r-0 border-rose-200 font-mono">
+                      speciallyo.web.app/p/
+                    </span>
+                    <input
+                      type="text"
+                      value={customSlug}
+                      onChange={(e) => setCustomSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
+                      placeholder={recipientName ? recipientName.toLowerCase().replace(/\s+/g, '-') : 'sarah-love'}
+                      className="w-full px-3 py-2.5 rounded-r-xl bg-white/90 border border-rose-200 focus:border-rose-500 focus:ring-2 focus:ring-rose-200 outline-none text-xs font-mono"
+                    />
+                  </div>
                 </div>
               </div>
             </div>
@@ -382,7 +577,7 @@ const CreateProposal = () => {
               <button
                 type="button"
                 onClick={() => {
-                  setPreviewAnswered(false);
+                  setPreviewStep('proposal');
                   setPreviewNoPos({ x: 0, y: 0 });
                   setPreviewNoCount(0);
                 }}
@@ -393,8 +588,8 @@ const CreateProposal = () => {
               </button>
             </div>
 
-            <div className="p-4 bg-gradient-to-b from-white to-rose-50/50 rounded-2xl border border-rose-100/80 text-center min-h-[380px] flex flex-col justify-center">
-              {!previewAnswered ? (
+            <div className="p-4 bg-gradient-to-b from-white to-rose-50/50 rounded-2xl border border-rose-100/80 text-center min-h-[400px] flex flex-col justify-center">
+              {previewStep === 'proposal' ? (
                 <div>
                   <div className="w-28 h-28 mx-auto rounded-2xl overflow-hidden shadow-md mb-4 bg-rose-50 border-2 border-rose-200">
                     <img
@@ -411,13 +606,13 @@ const CreateProposal = () => {
                   </h3>
 
                   <p className="text-base font-semibold text-rose-600 mb-6">
-                    {question || 'Will you be my Valentine? 💖'}
+                    {currentQuestionText || 'Will you be my Valentine? 💖'}
                   </p>
 
                   <div className="flex items-center justify-center gap-3 relative min-h-[60px]">
                     <button
                       type="button"
-                      onClick={() => setPreviewAnswered(true)}
+                      onClick={() => setPreviewStep(followUpType === 'letter_only' ? 'celebration' : 'follow_up')}
                       className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-emerald-400 to-green-500 text-white font-bold text-sm shadow-md shadow-emerald-500/25 hover:scale-105 transition-all"
                     >
                       YES! 💖
@@ -434,25 +629,99 @@ const CreateProposal = () => {
                       {previewNoCount > 0 ? "Can't click me! 😜" : "No"}
                     </motion.button>
                   </div>
+                  <p className="text-[11px] text-gray-400 mt-3 italic">
+                    💡 Try hovering over the No button!
+                  </p>
+                </div>
+              ) : previewStep === 'follow_up' ? (
+                <div className="py-2 text-left animate-fadeIn">
+                  <div className="text-center mb-3">
+                    <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
+                      Step 2: After YES 🎉
+                    </span>
+                  </div>
+
+                  {followUpType === 'date_plan' ? (
+                    <div className="space-y-3 bg-white p-4 rounded-2xl border border-rose-100 shadow-sm text-xs">
+                      <h4 className="font-bold text-gray-800 text-sm text-center">
+                        📅 Plan Our Special Date!
+                      </h4>
+
+                      <div>
+                        <label className="block font-semibold text-gray-700 mb-1">Pick Date</label>
+                        <input
+                          type="date"
+                          value={previewDate}
+                          onChange={(e) => setPreviewDate(e.target.value)}
+                          className="w-full p-2 rounded-lg border border-rose-200 bg-rose-50/50"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block font-semibold text-gray-700 mb-1">Preferred Time</label>
+                        <div className="grid grid-cols-2 gap-1.5">
+                          {['Morning Coffee ☕', 'Lunch 🥗', 'Sunset Walk 🌅', 'Dinner 🍷'].map((t) => (
+                            <button
+                              type="button"
+                              key={t}
+                              onClick={() => setPreviewTime(t)}
+                              className={`p-1.5 rounded-lg border text-[11px] ${
+                                previewTime === t ? 'bg-rose-500 text-white font-bold' : 'bg-gray-50 text-gray-700'
+                              }`}
+                            >
+                              {t}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => setPreviewStep('celebration')}
+                        className="w-full py-2.5 rounded-xl bg-gradient-to-r from-rose-500 to-pink-500 text-white font-bold text-xs shadow-md mt-2"
+                      >
+                        Confirm Our Date! 💖
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="space-y-3 bg-white p-4 rounded-2xl border border-rose-100 shadow-sm text-center">
+                      <h4 className="font-bold text-gray-800 text-sm">
+                        {twoOptionsPrompt || 'Choose what we do!'}
+                      </h4>
+                      <div className="space-y-2">
+                        <button
+                          type="button"
+                          onClick={() => setPreviewStep('celebration')}
+                          className="w-full p-3 rounded-xl border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-xs"
+                        >
+                          {option1 || 'Option 1'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setPreviewStep('celebration')}
+                          className="w-full p-3 rounded-xl border border-pink-200 bg-pink-50 hover:bg-pink-100 text-pink-700 font-bold text-xs"
+                        >
+                          {option2 || 'Option 2'}
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className="py-6 animate-fadeIn">
                   <div className="text-4xl mb-2 animate-bounce">🎉</div>
                   <h4 className="text-xl font-bold text-rose-600 font-heading">
-                    YAY! Acceptance Preview! 💍
+                    YAY! Response Saved! 💍
                   </h4>
-                  {loveNote && (
-                    <div className="mt-4 p-4 rounded-xl bg-rose-50 border border-rose-200 text-left font-handwriting text-base text-gray-800">
-                      <p className="font-bold text-rose-600 mb-1">Secret Note:</p>
-                      <p className="italic">{loveNote}</p>
-                    </div>
-                  )}
+                  <p className="text-xs text-gray-600 mt-1">
+                    Your partner's choices are recorded directly to your dashboard!
+                  </p>
                 </div>
               )}
             </div>
 
             <p className="text-[11px] text-gray-400 text-center mt-3">
-              This preview matches exactly what your recipient will see!
+              This preview matches what your recipient sees!
             </p>
           </div>
         </div>

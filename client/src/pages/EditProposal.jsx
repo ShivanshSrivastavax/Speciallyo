@@ -1,33 +1,42 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { 
-  Heart, Sparkles, Wand2, Music, ArrowRight, Eye, 
-  CheckCircle2, AlertCircle, RefreshCw, Save 
+  Heart, Sparkles, Wand2, Music, Calendar, Clock, 
+  ArrowRight, Eye, CheckCircle2, AlertCircle, RefreshCw, Save, Edit3 
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { neonApi } from '../services/neonApi';
 import { useAuthStore } from '../store/authStore';
 
+const PRESET_QUESTIONS = [
+  { id: 'val', text: "Will you be my Valentine? 💖", icon: "💖" },
+  { id: 'date', text: "Will you go on a date with me? 🌹", icon: "🌹" },
+  { id: 'gf', text: "Will you be my girlfriend? 💌", icon: "💌" },
+  { id: 'bf', text: "Will you be my boyfriend? ✨", icon: "✨" },
+  { id: 'marry', text: "Will you marry me? 💍", icon: "💍" },
+  { id: 'coffee', text: "Can I take you out for coffee? ☕", icon: "☕" },
+];
+
 const PRESET_GIFS = [
   {
     name: "Cute Bear Love",
-    url: "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExM3ZhcXlzc2N1ejZ3ajN6bjA0OGY0MnpsamFpYWZmdXJ6c3F6enFqdiZlcD12MV9naWZzX3NlYXJjaCZjdD1n/c76IJLufpNwSULPk77/giphy.gif"
+    url: "https://media1.giphy.com/media/v1.Y2lkPTc5MGI3NjExM3ZhcXlzc2N1ejZ3ajN6bjA0OGY0MnpsamFpYWZmdXJ6c3F6enFqdiZlcD12MV9naWZzX3NlYXJjaCZjdD1n/c76IJLufpNwSULPk77/giphy.gif"
   },
   {
     name: "Hugging Cats",
-    url: "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExbTQ1bDJtM2xnbXdtNGl3bzZ4Znp6aDNpdnhodms1d2V0Y3JscTNqOCZlcD12MV9naWZzX3NlYXJjaCZjdD1n/MDJ9IbxxvDUQM/giphy.gif"
+    url: "https://media.giphy.com/media/MDJ9IbxxvDUQM/giphy.gif"
   },
   {
-    name: "Love Confession",
-    url: "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExMnI4cnkzaDdvMmc2MG05c21yZml0d25nZm54M2lsaXRhbzBsdGgyNyZlcD12MV9naWZzX3NlYXJjaCZjdD1n/26FLdmIp6wJr91JAI/giphy.gif"
+    name: "Peach & Goma Kiss",
+    url: "https://media.giphy.com/media/LHZyixOnHwDDy/giphy.gif"
   },
   {
     name: "Puppy Eyes",
-    url: "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExNnBzajI5ZnJrbjJqM2p0cTN3Y282N2pjc2NraTVscHZ0MWh2YjQ2aCZlcD12MV9naWZzX3NlYXJjaCZjdD1n/uw0KqTWZPAhuU/giphy.gif"
+    url: "https://media.giphy.com/media/uw0KqTWZPAhuU/giphy.gif"
   },
   {
-    name: "Peach & Goma",
-    url: "https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExbnhmdWh1amg2aW8yY21oc2o2Mm9vaHl3dW8zNG1mbnpscG02c2M3eiZlcD12MV9naWZzX3NlYXJjaCZjdD1n/LHZyixOnHwDDy/giphy.gif"
+    name: "Anime Love Confession",
+    url: "https://media.giphy.com/media/26FLdmIp6wJr91JAI/giphy.gif"
   }
 ];
 
@@ -43,17 +52,24 @@ const EditProposal = () => {
 
   // Form State
   const [recipientName, setRecipientName] = useState('');
-  const [question, setQuestion] = useState('');
+  const [question, setQuestion] = useState(PRESET_QUESTIONS[0].text);
+  const [isCustomQuestion, setIsCustomQuestion] = useState(false);
+  const [customQuestionText, setCustomQuestionText] = useState('');
   const [customSlug, setCustomSlug] = useState('');
   const [icon, setIcon] = useState('💖');
-  const [gifUrl, setGifUrl] = useState('');
+  const [gifUrl, setGifUrl] = useState(PRESET_GIFS[0].url);
   const [spotifyUrl, setSpotifyUrl] = useState('');
-  const [loveNote, setLoveNote] = useState('');
   const [buttonAnimation, setButtonAnimation] = useState('evader');
   const [published, setPublished] = useState(true);
 
+  // Follow-up After "YES" Configuration
+  const [followUpType, setFollowUpType] = useState('date_plan');
+  const [loveNote, setLoveNote] = useState('');
+  const [option1, setOption1] = useState('Coffee & Boba ☕🧋');
+  const [option2, setOption2] = useState('Dinner & Movie 🍕🎬');
+  const [twoOptionsPrompt, setTwoOptionsPrompt] = useState('What should we do on our first date?');
+
   // Preview interactive state
-  const [previewAnswered, setPreviewAnswered] = useState(false);
   const [previewNoPos, setPreviewNoPos] = useState({ x: 0, y: 0 });
 
   useEffect(() => {
@@ -67,14 +83,41 @@ const EditProposal = () => {
           return;
         }
         setRecipientName(p.recipientName || '');
-        setQuestion(p.question || '');
+        
+        // Parse Question
+        const isPreset = PRESET_QUESTIONS.some((item) => item.text === p.question);
+        if (isPreset) {
+          setQuestion(p.question);
+          setIsCustomQuestion(false);
+        } else {
+          setIsCustomQuestion(true);
+          setCustomQuestionText(p.question || '');
+        }
+
         setCustomSlug(p.slug || '');
         setIcon(p.icon || '💖');
         setGifUrl(p.gifUrl || PRESET_GIFS[0].url);
         setSpotifyUrl(p.spotifyUrl || '');
-        setLoveNote(p.loveNote || '');
         setButtonAnimation(p.buttonAnimation || 'evader');
         setPublished(p.published !== false);
+
+        // Parse Follow-Up Data from loveNote
+        if (p.loveNote) {
+          try {
+            const parsed = JSON.parse(p.loveNote);
+            if (parsed && typeof parsed === 'object') {
+              setFollowUpType(parsed.type || 'date_plan');
+              setLoveNote(parsed.note || '');
+              if (parsed.option1) setOption1(parsed.option1);
+              if (parsed.option2) setOption2(parsed.option2);
+              if (parsed.twoOptionsPrompt) setTwoOptionsPrompt(parsed.twoOptionsPrompt);
+            } else {
+              setLoveNote(p.loveNote);
+            }
+          } catch {
+            setLoveNote(p.loveNote);
+          }
+        }
       } catch (err) {
         setError('Failed to load proposal details.');
       } finally {
@@ -85,31 +128,55 @@ const EditProposal = () => {
     fetchProposal();
   }, [id, user?.id]);
 
+  const currentQuestionText = isCustomQuestion ? customQuestionText : question;
+
   const handleEvadePreview = () => {
     const x = (Math.random() - 0.5) * 180;
     const y = (Math.random() - 0.5) * 120;
     setPreviewNoPos({ x, y });
   };
 
+  const handleSelectQuestion = (qText) => {
+    setIsCustomQuestion(false);
+    setQuestion(qText);
+  };
+
+  const handleCustomQuestionClick = () => {
+    setIsCustomQuestion(true);
+    if (!customQuestionText) {
+      setCustomQuestionText(question);
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
 
-    if (!recipientName.trim() || !question.trim()) {
+    const finalQuestion = isCustomQuestion ? customQuestionText.trim() : question.trim();
+
+    if (!recipientName.trim() || !finalQuestion) {
       setError('Please fill in the required fields.');
       return;
     }
+
+    const followUpData = {
+      type: followUpType,
+      note: loveNote.trim(),
+      option1: option1.trim(),
+      option2: option2.trim(),
+      twoOptionsPrompt: twoOptionsPrompt.trim(),
+    };
 
     setLoading(true);
     try {
       await neonApi.updateProposal(id, user.id, {
         recipientName: recipientName.trim(),
-        question: question.trim(),
+        question: finalQuestion,
         slug: customSlug.trim() || undefined,
         icon,
         gifUrl,
         spotifyUrl: spotifyUrl.trim() || undefined,
-        loveNote: loveNote.trim() || undefined,
+        loveNote: JSON.stringify(followUpData),
         buttonAnimation,
         published,
       });
@@ -138,7 +205,7 @@ const EditProposal = () => {
           Edit Proposal ✨
         </h1>
         <p className="text-gray-500 text-sm mt-1">
-          Update the question, button behavior, or secret love letter.
+          Update the question, full-page evasion physics, or post-YES date planning.
         </p>
       </div>
 
@@ -168,16 +235,63 @@ const EditProposal = () => {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1.5 uppercase tracking-wider">
+                <label className="block text-xs font-semibold text-gray-700 mb-2 uppercase tracking-wider">
                   Proposal Question *
                 </label>
-                <input
-                  type="text"
-                  value={question}
-                  onChange={(e) => setQuestion(e.target.value)}
-                  required
-                  className="w-full px-4 py-3 rounded-xl bg-white/90 border border-rose-200 focus:border-rose-500 focus:ring-2 focus:ring-rose-200 outline-none text-sm"
-                />
+
+                {/* Question Buttons Grid */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 mb-3">
+                  {PRESET_QUESTIONS.map((q) => {
+                    const isSelected = !isCustomQuestion && question === q.text;
+                    return (
+                      <button
+                        type="button"
+                        key={q.id}
+                        onClick={() => handleSelectQuestion(q.text)}
+                        className={`p-3 rounded-2xl border text-left transition-all flex items-center justify-between text-xs sm:text-sm font-medium ${
+                          isSelected
+                            ? 'bg-gradient-to-r from-rose-500 to-pink-500 text-white border-transparent shadow-md shadow-rose-500/25'
+                            : 'bg-white/90 text-gray-700 border-rose-100 hover:bg-rose-50/50'
+                        }`}
+                      >
+                        <span className="flex-1 pr-2">{q.text}</span>
+                        {isSelected && <CheckCircle2 className="w-4 h-4 text-white shrink-0" />}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Custom Question Toggle */}
+                <div>
+                  <button
+                    type="button"
+                    onClick={handleCustomQuestionClick}
+                    className={`w-full p-3 rounded-2xl border text-xs sm:text-sm font-medium transition-all flex items-center justify-between ${
+                      isCustomQuestion
+                        ? 'bg-rose-50 border-rose-500 text-rose-700 shadow-xs'
+                        : 'bg-white/80 border-rose-100 text-gray-600 hover:bg-rose-50/40'
+                    }`}
+                  >
+                    <div className="flex items-center space-x-2">
+                      <Edit3 className="w-4 h-4 text-rose-500" />
+                      <span>✨ Write Custom Question</span>
+                    </div>
+                    {isCustomQuestion && <span className="text-[11px] font-bold text-rose-600 uppercase">Active</span>}
+                  </button>
+
+                  {isCustomQuestion && (
+                    <div className="mt-2.5">
+                      <input
+                        type="text"
+                        value={customQuestionText}
+                        onChange={(e) => setCustomQuestionText(e.target.value)}
+                        placeholder="Type custom proposal question..."
+                        required
+                        className="w-full px-4 py-3 rounded-xl bg-white border-2 border-rose-400 focus:border-rose-600 outline-none text-sm font-medium"
+                      />
+                    </div>
+                  )}
+                </div>
               </div>
 
               <div>
@@ -216,7 +330,7 @@ const EditProposal = () => {
                     onClick={() => setGifUrl(g.url)}
                     className={`rounded-2xl overflow-hidden aspect-square border-2 transition-all ${
                       gifUrl === g.url
-                        ? 'border-rose-500 ring-2 ring-rose-300 scale-105'
+                        ? 'border-rose-500 ring-2 ring-rose-300 scale-105 shadow-md'
                         : 'border-transparent opacity-80 hover:opacity-100'
                     }`}
                   >
@@ -236,14 +350,14 @@ const EditProposal = () => {
             {/* Button Animation */}
             <div className="glass-card rounded-3xl p-6 sm:p-7 border border-white">
               <label className="block text-xs font-semibold text-gray-700 mb-3 uppercase tracking-wider">
-                Interactive "No" Button Behavior
+                "No" Button Behavior
               </label>
               <div className="grid grid-cols-2 gap-3">
                 {[
-                  { id: 'evader', title: 'The Evader' },
+                  { id: 'evader', title: 'Full-Screen Runaway' },
                   { id: 'shrink', title: 'Shrinking No' },
                   { id: 'grow', title: 'Growing Yes' },
-                  { id: 'teleport', title: 'Teleportation' },
+                  { id: 'teleport', title: 'Screen Teleportation' },
                 ].map((mode) => (
                   <div
                     key={mode.id}
@@ -265,19 +379,72 @@ const EditProposal = () => {
               </div>
             </div>
 
-            {/* Secret Love Note */}
+            {/* After "YES" Next Step */}
             <div className="glass-card rounded-3xl p-6 sm:p-7 border border-white space-y-4">
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1.5 uppercase tracking-wider">
-                  Secret Love Letter (Revealed on YES)
-                </label>
-                <textarea
-                  rows={4}
-                  value={loveNote}
-                  onChange={(e) => setLoveNote(e.target.value)}
-                  className="w-full px-4 py-3 rounded-xl bg-white/90 border border-rose-200 focus:border-rose-500 focus:ring-2 focus:ring-rose-200 outline-none font-handwriting text-lg"
-                />
+              <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                After "YES" Next Step
+              </label>
+
+              <div className="grid grid-cols-3 gap-2.5">
+                {[
+                  { id: 'date_plan', title: '📅 Plan Date' },
+                  { id: 'two_options', title: '🎁 Two Choices' },
+                  { id: 'letter_only', title: '💌 Letter Only' },
+                ].map((t) => (
+                  <button
+                    type="button"
+                    key={t.id}
+                    onClick={() => setFollowUpType(t.id)}
+                    className={`p-2.5 rounded-xl border text-xs font-bold transition-all ${
+                      followUpType === t.id
+                        ? 'bg-rose-500 text-white border-rose-500 shadow-xs'
+                        : 'bg-white text-gray-700 border-rose-200'
+                    }`}
+                  >
+                    {t.title}
+                  </button>
+                ))}
               </div>
+
+              {followUpType === 'two_options' ? (
+                <div className="space-y-3 pt-2">
+                  <input
+                    type="text"
+                    value={twoOptionsPrompt}
+                    onChange={(e) => setTwoOptionsPrompt(e.target.value)}
+                    placeholder="Choice Prompt Question"
+                    className="w-full px-3.5 py-2 rounded-xl bg-white border border-rose-200 text-xs"
+                  />
+                  <div className="grid grid-cols-2 gap-2">
+                    <input
+                      type="text"
+                      value={option1}
+                      onChange={(e) => setOption1(e.target.value)}
+                      placeholder="Option 1"
+                      className="w-full px-3.5 py-2 rounded-xl bg-white border border-rose-200 text-xs"
+                    />
+                    <input
+                      type="text"
+                      value={option2}
+                      onChange={(e) => setOption2(e.target.value)}
+                      placeholder="Option 2"
+                      className="w-full px-3.5 py-2 rounded-xl bg-white border border-rose-200 text-xs"
+                    />
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1.5 uppercase tracking-wider">
+                    {followUpType === 'date_plan' ? 'Sweet Note with Date Planner' : 'Secret Love Letter'}
+                  </label>
+                  <textarea
+                    rows={3}
+                    value={loveNote}
+                    onChange={(e) => setLoveNote(e.target.value)}
+                    className="w-full px-4 py-3 rounded-xl bg-white/90 border border-rose-200 focus:border-rose-500 focus:ring-2 focus:ring-rose-200 outline-none font-handwriting text-lg"
+                  />
+                </div>
+              )}
 
               <div>
                 <label className="block text-xs font-semibold text-gray-700 mb-1.5 uppercase tracking-wider">
@@ -345,7 +512,7 @@ const EditProposal = () => {
                 Dear {recipientName || 'Name'} ❤️
               </h3>
               <p className="text-base font-semibold text-rose-600 mb-6">
-                {question || 'Proposal question'}
+                {currentQuestionText || 'Proposal question'}
               </p>
 
               <div className="flex items-center justify-center gap-3 relative min-h-[50px]">
