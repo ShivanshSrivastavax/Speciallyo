@@ -8,6 +8,8 @@ export interface AuthRequest extends Request {
   };
 }
 
+
+
 export const authenticateToken = (req: AuthRequest, res: Response, next: NextFunction) => {
   const authHeader = req.headers["authorization"];
   const token = authHeader && authHeader.split(" ")[1];
@@ -15,8 +17,6 @@ export const authenticateToken = (req: AuthRequest, res: Response, next: NextFun
   if (!token) {
     return res.status(401).json({ error: "Access token required" });
   }
-
-
   const secret = process.env.JWT_SECRET || "super-secret-jwt-key";
 
   jwt.verify(token, secret, (err: any, user: any) => {
