@@ -15,9 +15,6 @@ export const authenticateToken = (req: AuthRequest, res: Response, next: NextFun
     return res.status(401).json({ error: "Access token required" });
   }
   const secret = process.env.JWT_SECRET || "super-secret-jwt-key";
-
-
-
   jwt.verify(token, secret, (err: any, user: any) => {
     if (err) {
       return res.status(403).json({ error: "Invalid or expired token" });
