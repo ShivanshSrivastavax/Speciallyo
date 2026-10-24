@@ -16,12 +16,12 @@ const registerSchema = z.object({
 });
 
 
-
 // Login validation schema
 const loginSchema = z.object({
   email: z.string().email("Invalid email address"),
   password: z.string().min(1, "Password is required"),
 });
+
 
 // POST /api/auth/register
 router.post("/register", async (req: Request, res: Response) => {
