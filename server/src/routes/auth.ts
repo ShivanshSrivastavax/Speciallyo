@@ -47,7 +47,6 @@ router.post("/register", async (req: Request, res: Response) => {
       JWT_SECRET,
       { expiresIn: "7d" }
     );
-
     return res.status(201).json({
       message: "User registered successfully",
       token,
@@ -65,8 +64,6 @@ router.post("/register", async (req: Request, res: Response) => {
     return res.status(500).json({ error: "Internal server error during registration" });
   }
 });
-
-
 // POST /api/auth/login
 router.post("/login", async (req: Request, res: Response) => {
   try {
