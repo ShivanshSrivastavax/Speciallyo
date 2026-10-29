@@ -55,7 +55,6 @@ router.post("/register", async (req: Request, res: Response) => {
         name: user.name,
         email: user.email,
       },
-
     });
   } catch (error: any) {
     if (error instanceof z.ZodError) {
