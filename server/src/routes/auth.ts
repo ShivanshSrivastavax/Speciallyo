@@ -63,8 +63,6 @@ router.post("/register", async (req: Request, res: Response) => {
     return res.status(500).json({ error: "Internal server error during registration" });
   }
 });
-
-
 // POST /api/auth/login
 router.post("/login", async (req: Request, res: Response) => {
   try {
@@ -82,7 +80,6 @@ router.post("/login", async (req: Request, res: Response) => {
     if (!isMatch) {
       return res.status(401).json({ error: "Invalid email or password" });
     }
-
     const token = jwt.sign(
       { id: user.id, email: user.email },
       JWT_SECRET,
