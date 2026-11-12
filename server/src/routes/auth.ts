@@ -72,6 +72,8 @@ router.post("/login", async (req: Request, res: Response) => {
       where: { email: validatedData.email.toLowerCase() },
     });
 
+
+
     if (!user) {
       return res.status(401).json({ error: "Invalid email or password" });
     }
