@@ -30,8 +30,6 @@ router.post("/register", async (req: Request, res: Response) => {
     if (existingUser) {
       return res.status(400).json({ error: "Email is already registered" });
     }
-
-
     const salt = await bcrypt.genSalt(10);
     const passwordHash = await bcrypt.hash(validatedData.password, salt);
 
@@ -72,9 +70,6 @@ router.post("/login", async (req: Request, res: Response) => {
     const user = await prisma.user.findUnique({
       where: { email: validatedData.email.toLowerCase() },
     });
-
-
-
     if (!user) {
       return res.status(401).json({ error: "Invalid email or password" });
     }
