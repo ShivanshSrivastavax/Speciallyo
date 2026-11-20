@@ -53,6 +53,7 @@ router.post("/register", async (req: Request, res: Response) => {
         name: user.name,
         email: user.email,
       },
+
     });
   } catch (error: any) {
     if (error instanceof z.ZodError) {
@@ -62,8 +63,6 @@ router.post("/register", async (req: Request, res: Response) => {
     return res.status(500).json({ error: "Internal server error during registration" });
   }
 });
-
-
 // POST /api/auth/login
 router.post("/login", async (req: Request, res: Response) => {
   try {
