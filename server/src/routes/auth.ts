@@ -109,7 +109,6 @@ router.get("/me", authenticateToken, async (req: AuthRequest, res: Response) => 
     if (!req.user) {
       return res.status(401).json({ error: "Unauthorized" });
     }
-
     const user = await prisma.user.findUnique({
       where: { id: req.user.id },
       select: {
@@ -123,7 +122,6 @@ router.get("/me", authenticateToken, async (req: AuthRequest, res: Response) => 
     if (!user) {
       return res.status(404).json({ error: "User not found" });
     }
-
     return res.json({ user });
   } catch (error) {
     console.error("Auth me error:", error);
