@@ -102,15 +102,12 @@ router.post("/login", async (req: Request, res: Response) => {
     return res.status(500).json({ error: "Internal server error during login" });
   }
 });
-
 // GET /api/auth/me
 router.get("/me", authenticateToken, async (req: AuthRequest, res: Response) => {
   try {
     if (!req.user) {
       return res.status(401).json({ error: "Unauthorized" });
     }
-
-
     const user = await prisma.user.findUnique({
       where: { id: req.user.id },
       select: {
@@ -130,5 +127,4 @@ router.get("/me", authenticateToken, async (req: AuthRequest, res: Response) => 
     return res.status(500).json({ error: "Failed to fetch user profile" });
   }
 });
-
 export default router;
