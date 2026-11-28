@@ -84,6 +84,7 @@ router.post("/login", async (req: Request, res: Response) => {
       JWT_SECRET,
       { expiresIn: "7d" }
     );
+
     return res.json({
       message: "Login successful",
       token,
